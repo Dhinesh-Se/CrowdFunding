@@ -8,9 +8,8 @@ if (typeof window !== "undefined" && typeof window.web3 !== "undefined") {
 } else {
   // we are on the server *OR* meta mask is not running
   // creating our own provider
-  const provider = new Web3.providers.HttpProvider(
-    "https://rinkeby.infura.io/v3/08ac79d88b5d4aea961ca36af7ea6ee7"
-  );
+  const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL || "https://sepolia.infura.io/v3/YOUR_INFURA_KEY";
+  const provider = new Web3.providers.HttpProvider(rpcUrl);
 
   web3 = new Web3(provider);
 }

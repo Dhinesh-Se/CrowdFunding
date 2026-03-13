@@ -34,13 +34,18 @@ import { FaHandshake } from "react-icons/fa";
 import { FcShare, FcDonate, FcMoneyTransfer } from "react-icons/fc";
 
 export async function getServerSideProps(context) {
-  const campaigns = await factory.methods.getDeployedCampaigns().call();
-
-  console.log(campaigns);
-
-  return {
-    props: { campaigns },
-  };
+  try {
+    const campaigns = await factory.methods.getDeployedCampaigns().call();
+    console.log(campaigns);
+    return {
+      props: { campaigns },
+    };
+  } catch (error) {
+    console.error("Error fetching campaigns:", error);
+    return {
+      props: { campaigns: [] },
+    };
+  }
 }
 
 const Feature = ({ title, text, icon }) => {
