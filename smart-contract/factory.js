@@ -1,9 +1,15 @@
 import web3 from "./web3";
 import CampaignFactory from "./build/CampaignFactory.json";
+import { FACTORY_ADDRESS } from "../lib/blockchain";
 
-const instance = new web3.eth.Contract(
-  JSON.parse(CampaignFactory.interface),
-  "0xba59695E74881e3AA3E4c4ac51D03fDB86481F32"
-);
+const campaignFactoryAbi = CampaignFactory.abi || JSON.parse(CampaignFactory.interface || "[]");
 
-export default instance;
+export function getFactory() {
+  if (!FACTORY_ADDRESS) {
+    throw new Error(
+      "NEXT_PUBLIC_FACTORY_ADDRESS is not configured. Deploy the contracts and add the factory address to your environment."
+    );
+  }
+
+  return new web3.eth.Contract(campaignFactoryAbi, FACTORY_ADDRESS);
+}

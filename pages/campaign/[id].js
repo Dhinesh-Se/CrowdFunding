@@ -1,6 +1,5 @@
 import Head from "next/head";
-import { useState, useEffect } from "react";
-import { useWallet } from "use-wallet";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/router";
 import { useWindowSize } from "react-use";
@@ -9,45 +8,44 @@ import {
   getETHPriceInUSD,
   getWEIPriceInUSD,
 } from "../../lib/getETHPrice";
+import { getAddressExplorerUrl } from "../../lib/blockchain";
+import { useWallet } from "../../lib/wallet";
 import {
+  Alert,
+  AlertDescription,
+  AlertIcon,
   Box,
-  Flex,
-  Stack,
-  Heading,
-  Text,
-  Container,
-  Input,
   Button,
-  SimpleGrid,
-  InputRightAddon,
-  InputGroup,
+  CloseButton,
+  Container,
   FormControl,
+  FormHelperText,
   FormLabel,
+  Heading,
+  Input,
+  InputGroup,
+  InputRightAddon,
+  Link,
+  Progress,
+  SimpleGrid,
+  Stack,
   Stat,
   StatLabel,
   StatNumber,
-  useColorModeValue,
+  Text,
   Tooltip,
-  Alert,
-  AlertIcon,
-  AlertDescription,
-  Progress,
-  CloseButton,
-  FormHelperText,
-  Link,
+  useColorModeValue,
 } from "@chakra-ui/react";
-
-import { InfoIcon, ExternalLinkIcon } from "@chakra-ui/icons";
+import { FiExternalLink, FiInfo } from "react-icons/fi";
 import NextLink from "next/link";
 import Confetti from "react-confetti";
 
 import web3 from "../../smart-contract/web3";
-import Campaign from "../../smart-contract/campaign";
-import factory from "../../smart-contract/factory";
+import getCampaign from "../../smart-contract/campaign";
 
 export async function getServerSideProps({ params }) {
   const campaignId = params.id;
-  const campaign = Campaign(campaignId);
+  const campaign = getCampaign(campaignId);
   const summary = await campaign.methods.getSummary().call();
   const ETHPrice = await getETHPrice();
 
@@ -63,13 +61,12 @@ export async function getServerSideProps({ params }) {
       description: summary[6],
       image: summary[7],
       target: summary[8],
-      ETHPrice,
+      ETHPrice: ETHPrice || 0,
     },
   };
 }
 
-function StatsCard(props) {
-  const { title, stat, info } = props;
+function StatsCard({ title, stat, info }) {
   return (
     <Stat
       px={{ base: 2, md: 4 }}
@@ -79,9 +76,7 @@ function StatsCard(props) {
       borderColor={"gray.500"}
       rounded={"lg"}
       transition={"transform 0.3s ease"}
-      _hover={{
-        transform: "translateY(-5px)",
-      }}
+      _hover={{ transform: "translateY(-5px)" }}
     >
       <Tooltip
         label={info}
@@ -90,21 +85,14 @@ function StatsCard(props) {
         color={useColorModeValue("gray.800", "white")}
         fontSize={"1em"}
       >
-        <Flex justifyContent={"space-between"}>
-          <Box pl={{ base: 2, md: 4 }}>
-            <StatLabel fontWeight={"medium"} isTruncated>
-              {title}
-            </StatLabel>
-            <StatNumber
-              fontSize={"base"}
-              fontWeight={"bold"}
-              isTruncated
-              maxW={{ base: "	10rem", sm: "sm" }}
-            >
-              {stat}
-            </StatNumber>
-          </Box>
-        </Flex>
+        <Box pl={{ base: 2, md: 4 }}>
+          <StatLabel fontWeight={"medium"} isTruncated>
+            {title}
+          </StatLabel>
+          <StatNumber fontSize={"base"} fontWeight={"bold"} isTruncated maxW={{ base: "10rem", sm: "sm" }}>
+            {stat}
+          </StatNumber>
+        </Box>
       </Tooltip>
     </Stat>
   );
@@ -123,36 +111,36 @@ export default function CampaignSingle({
   target,
   ETHPrice,
 }) {
-  const { handleSubmit, register, formState, reset, getValues } = useForm({
-    mode: "onChange",
-  });
+  const { handleSubmit, register, formState, reset } = useForm({ mode: "onChange" });
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [error, setError] = useState("");
   const [amountInUSD, setAmountInUSD] = useState();
   const wallet = useWallet();
   const router = useRouter();
   const { width, height } = useWindowSize();
+
   async function onSubmit(data) {
-    console.log(data);
+    setError("");
+
     try {
-      const campaign = Campaign(id);
-      const accounts = await web3.eth.getAccounts();
+      const account = wallet.account || (await wallet.connect());
+      const campaign = getCampaign(id);
       await campaign.methods.contibute().send({
-        from: accounts[0],
+        from: account,
         value: web3.utils.toWei(data.value, "ether"),
+        gas: "5000000",
       });
-      router.push(`/campaign/${id}`);
+      reset();
       setAmountInUSD(null);
-      reset("", {
-        keepValues: false,
-      });
       setIsSubmitted(true);
-      setError(false);
+      router.replace(`/campaign/${id}`);
     } catch (err) {
       setError(err.message);
-      console.log(err);
+      console.error(err);
     }
   }
+
+  const explorerUrl = getAddressExplorerUrl(id);
 
   return (
     <div>
@@ -163,274 +151,147 @@ export default function CampaignSingle({
       </Head>
       {isSubmitted ? <Confetti width={width} height={height} /> : null}
       <main>
-        {" "}
         <Box position={"relative"}>
           {isSubmitted ? (
-            <Container
-              maxW={"7xl"}
-              columns={{ base: 1, md: 2 }}
-              spacing={{ base: 10, lg: 32 }}
-              py={{ base: 6 }}
-            >
+            <Container maxW={"7xl"} py={{ base: 6 }}>
               <Alert status="success" mt="2">
                 <AlertIcon />
-                <AlertDescription mr={2}>
-                  {" "}
-                  Thank You for your Contribution 🙏
-                </AlertDescription>
-                <CloseButton
-                  position="absolute"
-                  right="8px"
-                  top="8px"
-                  onClick={() => setIsSubmitted(false)}
-                />
+                <AlertDescription mr={2}>Thank you for your contribution 🙏</AlertDescription>
+                <CloseButton position="absolute" right="8px" top="8px" onClick={() => setIsSubmitted(false)} />
               </Alert>
             </Container>
           ) : null}
-          <Container
-            as={SimpleGrid}
-            maxW={"7xl"}
-            columns={{ base: 1, md: 2 }}
-            spacing={{ base: 10, lg: 32 }}
-            py={{ base: 6 }}
-          >
+          <Container as={SimpleGrid} maxW={"7xl"} columns={{ base: 1, md: 2 }} spacing={{ base: 10, lg: 32 }} py={{ base: 6 }}>
             <Stack spacing={{ base: 6 }}>
-              <Heading
-                lineHeight={1.1}
-                fontSize={{ base: "3xl", sm: "4xl", md: "5xl" }}
-              >
+              <Heading lineHeight={1.1} fontSize={{ base: "3xl", sm: "4xl", md: "5xl" }}>
                 {name}
               </Heading>
-              <Text
-                color={useColorModeValue("gray.500", "gray.200")}
-                fontSize={{ base: "lg" }}
-              >
+              <Text color={useColorModeValue("gray.500", "gray.200")} fontSize={{ base: "lg" }}>
                 {description}
               </Text>
-              <Link
-                color="teal.500"
-                href={`https://rinkeby.etherscan.io/address/${id}`}
-                isExternal
-              >
-                View on Rinkeby Etherscan <ExternalLinkIcon mx="2px" />
-              </Link>
+              {image ? (
+                <Box as="img" src={image} alt={name} rounded="xl" objectFit="cover" maxH="360px" w="full" />
+              ) : null}
+              {explorerUrl ? (
+                <Link color="teal.500" href={explorerUrl} isExternal>
+                  View contract on explorer <Box as={FiExternalLink} mx="2px" display="inline" />
+                </Link>
+              ) : null}
               <Box mx={"auto"} w={"full"}>
                 <SimpleGrid columns={{ base: 1 }} spacing={{ base: 5 }}>
                   <StatsCard
                     title={"Minimum Contribution"}
-                    stat={`${web3.utils.fromWei(
-                      minimumContribution,
-                      "ether"
-                    )} ETH ($${getWEIPriceInUSD(
-                      ETHPrice,
-                      minimumContribution
-                    )})`}
-                    info={
-                      "You must contribute at least this much in Wei ( 1 ETH = 10 ^ 18 Wei) to become an approver"
-                    }
+                    stat={`${web3.utils.fromWei(minimumContribution, "ether")} ETH${ETHPrice ? ` ($${getWEIPriceInUSD(ETHPrice, minimumContribution)})` : ""}`}
+                    info={"You must contribute at least this much to become an approver."}
                   />
-                  <StatsCard
-                    title={"Wallet Address of Campaign Creator"}
-                    stat={manager}
-                    info={
-                      "The Campaign Creator created the campaign and can create requests to withdraw money."
-                    }
-                  />
-                  <StatsCard
-                    title={"Number of Requests"}
-                    stat={requestsCount}
-                    info={
-                      "A request tries to withdraw money from the contract. Requests must be approved by approvers"
-                    }
-                  />
-                  <StatsCard
-                    title={"Number of Approvers"}
-                    stat={approversCount}
-                    info={
-                      "Number of people who have already donated to this campaign"
-                    }
-                  />
+                  <StatsCard title={"Wallet Address of Campaign Creator"} stat={manager} info={"The campaign creator can create and finalize withdrawal requests."} />
+                  <StatsCard title={"Number of Requests"} stat={requestsCount} info={"Each request is a proposed withdrawal from the campaign balance."} />
+                  <StatsCard title={"Number of Approvers"} stat={approversCount} info={"Contributors become approvers and can vote on withdrawal requests."} />
                 </SimpleGrid>
               </Box>
             </Stack>
             <Stack spacing={{ base: 4 }}>
               <Box>
-                <Stat
-                  bg={useColorModeValue("white", "gray.700")}
-                  boxShadow={"lg"}
-                  rounded={"xl"}
-                  p={{ base: 4, sm: 6, md: 8 }}
-                  spacing={{ base: 8 }}
-                >
+                <Stat bg={useColorModeValue("white", "gray.700")} boxShadow={"lg"} rounded={"xl"} p={{ base: 4, sm: 6, md: 8 }}>
                   <StatLabel fontWeight={"medium"}>
-                    <Text as="span" isTruncated mr={2}>
-                      {" "}
-                      Campaign Balance
-                    </Text>
+                    <Text as="span" isTruncated mr={2}>Campaign Balance</Text>
                     <Tooltip
-                      label="The balance is how much money this campaign has left to
-                  spend."
+                      label="The balance is how much money this campaign still has available."
                       bg={useColorModeValue("white", "gray.700")}
                       placement={"top"}
                       color={useColorModeValue("gray.800", "white")}
                       fontSize={"1em"}
                       px="4"
                     >
-                      <InfoIcon
-                        color={useColorModeValue("teal.800", "white")}
-                      />
+                      <Box as={FiInfo} color={useColorModeValue("teal.800", "white")} display="inline" />
                     </Tooltip>
                   </StatLabel>
                   <StatNumber>
-                    <Box
-                      fontSize={"2xl"}
-                      isTruncated
-                      maxW={{ base: "	15rem", sm: "sm" }}
-                      pt="2"
-                    >
+                    <Box fontSize={"2xl"} isTruncated maxW={{ base: "15rem", sm: "sm" }} pt="2">
                       <Text as="span" fontWeight={"bold"}>
-                        {balance > 0
-                          ? web3.utils.fromWei(balance, "ether")
-                          : "0, Become a Donor 😄"}
+                        {balance > 0 ? web3.utils.fromWei(balance, "ether") : "0, Become a Donor 😄"}
                       </Text>
-                      <Text
-                        as="span"
-                        display={balance > 0 ? "inline" : "none"}
-                        pr={2}
-                        fontWeight={"bold"}
-                      >
-                        {" "}
+                      <Text as="span" display={balance > 0 ? "inline" : "none"} pr={2} fontWeight={"bold"}>
                         ETH
                       </Text>
                       <Text
                         as="span"
                         fontSize="lg"
-                        display={balance > 0 ? "inline" : "none"}
+                        display={balance > 0 && ETHPrice ? "inline" : "none"}
                         fontWeight={"normal"}
                         color={useColorModeValue("gray.500", "gray.200")}
                       >
                         (${getWEIPriceInUSD(ETHPrice, balance)})
                       </Text>
                     </Box>
-
                     <Text fontSize={"md"} fontWeight="normal">
-                      target of {web3.utils.fromWei(target, "ether")} ETH ($
-                      {getWEIPriceInUSD(ETHPrice, target)})
+                      target of {web3.utils.fromWei(target, "ether")} ETH{ETHPrice ? ` ($${getWEIPriceInUSD(ETHPrice, target)})` : ""}
                     </Text>
                     <Progress
                       colorScheme="teal"
                       size="sm"
-                      value={web3.utils.fromWei(balance, "ether")}
-                      max={web3.utils.fromWei(target, "ether")}
+                      value={Number(web3.utils.fromWei(balance, "ether"))}
+                      max={Number(web3.utils.fromWei(target, "ether")) || 1}
                       mt={4}
                     />
                   </StatNumber>
                 </Stat>
               </Box>
-              <Stack
-                bg={useColorModeValue("white", "gray.700")}
-                boxShadow={"lg"}
-                rounded={"xl"}
-                p={{ base: 4, sm: 6, md: 8 }}
-                spacing={{ base: 6 }}
-              >
-                <Heading
-                  lineHeight={1.1}
-                  fontSize={{ base: "2xl", sm: "3xl" }}
-                  color={useColorModeValue("teal.600", "teal.200")}
-                >
+              <Stack bg={useColorModeValue("white", "gray.700")} boxShadow={"lg"} rounded={"xl"} p={{ base: 4, sm: 6, md: 8 }} spacing={{ base: 6 }}>
+                <Heading lineHeight={1.1} fontSize={{ base: "2xl", sm: "3xl" }} color={useColorModeValue("teal.600", "teal.200")}>
                   Contribute Now!
                 </Heading>
-
                 <Box mt={10}>
                   <form onSubmit={handleSubmit(onSubmit)}>
                     <FormControl id="value">
-                      <FormLabel>
-                        Amount in Ether you want to contribute
-                      </FormLabel>
+                      <FormLabel>Amount in Ether you want to contribute</FormLabel>
                       <InputGroup>
-                        {" "}
                         <Input
                           {...register("value", { required: true })}
                           type="number"
                           isDisabled={formState.isSubmitting}
-                          onChange={(e) => {
-                            setAmountInUSD(Math.abs(e.target.value));
-                          }}
+                          onChange={(e) => setAmountInUSD(Math.abs(e.target.value))}
                           step="any"
                           min="0"
-                        />{" "}
-                        <InputRightAddon children="ETH" />
+                        />
+                        <InputRightAddon>ETH</InputRightAddon>
                       </InputGroup>
                       {amountInUSD ? (
-                        <FormHelperText>
-                          ~$ {getETHPriceInUSD(ETHPrice, amountInUSD)}
-                        </FormHelperText>
+                        <FormHelperText>~$ {getETHPriceInUSD(ETHPrice, amountInUSD)}</FormHelperText>
                       ) : null}
                     </FormControl>
-
                     {error ? (
                       <Alert status="error" mt="2">
                         <AlertIcon />
-                        <AlertDescription mr={2}> {error}</AlertDescription>
+                        <AlertDescription>{error}</AlertDescription>
                       </Alert>
                     ) : null}
-
-                    <Stack spacing={10}>
-                      {wallet.status === "connected" ? (
-                        <Button
-                          fontFamily={"heading"}
-                          mt={4}
-                          w={"full"}
-                          bgGradient="linear(to-r, teal.400,green.400)"
-                          color={"white"}
-                          _hover={{
-                            bgGradient: "linear(to-r, teal.400,blue.400)",
-                            boxShadow: "xl",
-                          }}
-                          isLoading={formState.isSubmitting}
-                          isDisabled={amountInUSD ? false : true}
-                          type="submit"
-                        >
-                          Contribute
-                        </Button>
-                      ) : (
-                        <Alert status="warning" mt={4}>
-                          <AlertIcon />
-                          <AlertDescription mr={2}>
-                            Please Connect Your Wallet to Contribute
-                          </AlertDescription>
-                        </Alert>
-                      )}
+                    <Stack spacing={4}>
+                      <Button
+                        fontFamily={"heading"}
+                        mt={4}
+                        w={"full"}
+                        bgGradient="linear(to-r, teal.400,green.400)"
+                        color={"white"}
+                        _hover={{ bgGradient: "linear(to-r, teal.400,blue.400)", boxShadow: "xl" }}
+                        isLoading={formState.isSubmitting || wallet.status === "connecting"}
+                        isDisabled={!amountInUSD}
+                        type="submit"
+                      >
+                        {wallet.status === "connected" ? "Contribute" : "Connect Wallet & Contribute"}
+                      </Button>
                     </Stack>
                   </form>
                 </Box>
               </Stack>
-
-              <Stack
-                bg={useColorModeValue("white", "gray.700")}
-                boxShadow={"lg"}
-                rounded={"xl"}
-                p={{ base: 4, sm: 6, md: 8 }}
-                spacing={4}
-              >
+              <Stack bg={useColorModeValue("white", "gray.700")} boxShadow={"lg"} rounded={"xl"} p={{ base: 4, sm: 6, md: 8 }} spacing={4}>
                 <NextLink href={`/campaign/${id}/requests`}>
-                  <Button
-                    fontFamily={"heading"}
-                    w={"full"}
-                    bgGradient="linear(to-r, teal.400,green.400)"
-                    color={"white"}
-                    _hover={{
-                      bgGradient: "linear(to-r, teal.400,blue.400)",
-                      boxShadow: "xl",
-                    }}
-                  >
+                  <Button fontFamily={"heading"} w={"full"} bgGradient="linear(to-r, teal.400,green.400)" color={"white"} _hover={{ bgGradient: "linear(to-r, teal.400,blue.400)", boxShadow: "xl" }}>
                     View Withdrawal Requests
                   </Button>
                 </NextLink>
                 <Text fontSize={"sm"}>
-                  * You can see where these funds are being used & if you have
-                  contributed you can also approve those Withdrawal Requests :)
+                  Contributors can approve withdrawal requests before the campaign manager finalizes them.
                 </Text>
               </Stack>
             </Stack>
