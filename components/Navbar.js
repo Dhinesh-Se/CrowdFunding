@@ -1,27 +1,35 @@
 import {
+  Alert,
+  AlertDescription,
+  AlertIcon,
   Box,
-  Flex,
-  Text,
-  IconButton,
   Button,
-  Stack,
-  useColorModeValue,
-  useBreakpointValue,
   Container,
+  Flex,
   Heading,
   Menu,
   MenuButton,
-  MenuList,
   MenuItem,
+  MenuList,
+  Stack,
+  Text,
+  useColorModeValue,
 } from "@chakra-ui/react";
-import { useWallet } from "use-wallet";
-
+import { FiChevronDown } from "react-icons/fi";
 import NextLink from "next/link";
 import DarkModeSwitch from "./DarkModeSwitch";
-import { ChevronDownIcon } from "@chakra-ui/icons";
+import { useWallet } from "../lib/wallet";
 
 export default function NavBar() {
   const wallet = useWallet();
+
+  const handleConnect = async () => {
+    try {
+      await wallet.connect();
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   return (
     <Box>
@@ -83,53 +91,40 @@ export default function NavBar() {
             direction={"row"}
             spacing={6}
             display={{ base: "none", md: "flex" }}
+            align="center"
           >
-            <Button
-              fontSize={"md"}
-              fontWeight={600}
-              variant={"link"}
-              display={{ base: "none", md: "inline-flex" }}
-            >
+            <Button fontSize={"md"} fontWeight={600} variant={"link"}>
               <NextLink href="/campaign/new">Create Campaign</NextLink>
             </Button>
-            <Button
-              fontSize={"md"}
-              fontWeight={600}
-              variant={"link"}
-              display={{ base: "none", md: "inline-flex" }}
-            >
-              <NextLink href="/#howitworks"> How it Works</NextLink>
+            <Button fontSize={"md"} fontWeight={600} variant={"link"}>
+              <NextLink href="/#howitworks">How it Works</NextLink>
             </Button>
 
             {wallet.status === "connected" ? (
               <Menu>
-                <MenuButton as={Button} rightIcon={<ChevronDownIcon />}>
-                  {wallet.account.substr(0, 10) + "..."}
+                <MenuButton as={Button} rightIcon={<FiChevronDown />}>
+                  {wallet.account.slice(0, 10)}...
                 </MenuButton>
                 <MenuList>
-                  <MenuItem onClick={() => wallet.reset()}>
-                    {" "}
-                    Disconnect Wallet{" "}
+                  <MenuItem onClick={wallet.disconnect}>Disconnect Wallet</MenuItem>
+                  <MenuItem isDisabled>
+                    <Text fontSize="sm">Chain: {wallet.chainId || "unknown"}</Text>
                   </MenuItem>
                 </MenuList>
               </Menu>
             ) : (
-              <div>
-                <Button
-                  display={{ base: "none", md: "inline-flex" }}
-                  fontSize={"md"}
-                  fontWeight={600}
-                  color={"white"}
-                  bg={"teal.400"}
-                  href={"#"}
-                  _hover={{
-                    bg: "teal.300",
-                  }}
-                  onClick={() => wallet.connect()}
-                >
-                  Connect Wallet{" "}
-                </Button>
-              </div>
+              <Button
+                display={{ base: "none", md: "inline-flex" }}
+                fontSize={"md"}
+                fontWeight={600}
+                color={"white"}
+                bg={"teal.400"}
+                _hover={{ bg: "teal.300" }}
+                onClick={handleConnect}
+                isLoading={wallet.status === "connecting"}
+              >
+                Connect Wallet
+              </Button>
             )}
 
             <DarkModeSwitch />
@@ -140,6 +135,14 @@ export default function NavBar() {
           </Flex>
         </Container>
       </Flex>
+      {wallet.error ? (
+        <Container maxW="7xl" pt="72px">
+          <Alert status="warning" rounded="md">
+            <AlertIcon />
+            <AlertDescription>{wallet.error}</AlertDescription>
+          </Alert>
+        </Container>
+      ) : null}
     </Box>
   );
 }

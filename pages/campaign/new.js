@@ -1,33 +1,31 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import Head from "next/head";
 import { useAsync } from "react-use";
 import { useRouter } from "next/router";
-import { useWallet } from "use-wallet";
 import { useForm } from "react-hook-form";
 import {
-  Flex,
-  Box,
-  FormControl,
-  FormLabel,
-  Input,
-  Stack,
-  Button,
-  Heading,
-  Text,
-  useColorModeValue,
-  InputRightAddon,
-  InputGroup,
   Alert,
-  AlertIcon,
   AlertDescription,
+  AlertIcon,
+  Box,
+  Button,
+  FormControl,
   FormHelperText,
+  FormLabel,
+  Heading,
+  Input,
+  InputGroup,
+  InputRightAddon,
+  Stack,
+  Text,
   Textarea,
+  useColorModeValue,
 } from "@chakra-ui/react";
 import NextLink from "next/link";
-import { ArrowBackIcon } from "@chakra-ui/icons";
+import { FiArrowLeft } from "react-icons/fi";
 import { getETHPrice, getETHPriceInUSD } from "../../lib/getETHPrice";
-
-import factory from "../../smart-contract/factory";
+import { useWallet } from "../../lib/wallet";
+import { getFactory } from "../../smart-contract/factory";
 import web3 from "../../smart-contract/web3";
 
 export default function NewCampaign() {
@@ -35,35 +33,30 @@ export default function NewCampaign() {
     handleSubmit,
     register,
     formState: { isSubmitting, errors },
-  } = useForm({
-    mode: "onChange",
-  });
+  } = useForm({ mode: "onChange" });
   const router = useRouter();
   const [error, setError] = useState("");
   const wallet = useWallet();
   const [minContriInUSD, setMinContriInUSD] = useState();
   const [targetInUSD, setTargetInUSD] = useState();
   const [ETHPrice, setETHPrice] = useState(0);
+
   useAsync(async () => {
     try {
       const result = await getETHPrice();
-      setETHPrice(result);
-    } catch (error) {
-      console.log(error);
+      setETHPrice(result || 0);
+    } catch (priceError) {
+      console.error(priceError);
     }
   }, []);
+
   async function onSubmit(data) {
-    console.log(
-      data.minimumContribution,
-      data.campaignName,
-      data.description,
-      data.imageUrl,
-      data.target
-    );
+    setError("");
+
     try {
-      const accounts = await web3.eth.getAccounts();
-      await factory.methods
-        .createCampaign(
+      const account = wallet.account || (await wallet.connect());
+      await getFactory()
+        .methods.createCampaign(
           web3.utils.toWei(data.minimumContribution, "ether"),
           data.campaignName,
           data.description,
@@ -71,13 +64,14 @@ export default function NewCampaign() {
           web3.utils.toWei(data.target, "ether")
         )
         .send({
-          from: accounts[0],
+          from: account,
+          gas: "5000000",
         });
 
       router.push("/");
     } catch (err) {
       setError(err.message);
-      console.log(err);
+      console.error(err);
     }
   }
 
@@ -91,62 +85,46 @@ export default function NewCampaign() {
       <main>
         <Stack spacing={8} mx={"auto"} maxW={"2xl"} py={12} px={6}>
           <Text fontSize={"lg"} color={"teal.400"}>
-            <ArrowBackIcon mr={2} />
-            <NextLink href="/"> Back to Home</NextLink>
+            <Box as={FiArrowLeft} display="inline" mr={2} />
+            <NextLink href="/">Back to Home</NextLink>
           </Text>
           <Stack>
             <Heading fontSize={"4xl"}>Create a New Campaign 📢</Heading>
+            <Text color={useColorModeValue("gray.600", "gray.300")}>
+              This will create a new campaign from the deployed factory contract.
+            </Text>
           </Stack>
-          <Box
-            rounded={"lg"}
-            bg={useColorModeValue("white", "gray.700")}
-            boxShadow={"lg"}
-            p={8}
-          >
+          <Box rounded={"lg"} bg={useColorModeValue("white", "gray.700")} boxShadow={"lg"} p={8}>
             <form onSubmit={handleSubmit(onSubmit)}>
               <Stack spacing={4}>
                 <FormControl id="minimumContribution">
                   <FormLabel>Minimum Contribution Amount</FormLabel>
                   <InputGroup>
-                    {" "}
                     <Input
                       type="number"
                       step="any"
+                      min="0"
                       {...register("minimumContribution", { required: true })}
                       isDisabled={isSubmitting}
-                      onChange={(e) => {
-                        setMinContriInUSD(Math.abs(e.target.value));
-                      }}
-                    />{" "}
-                    <InputRightAddon children="ETH" />
+                      onChange={(e) => setMinContriInUSD(Math.abs(e.target.value))}
+                    />
+                    <InputRightAddon>ETH</InputRightAddon>
                   </InputGroup>
                   {minContriInUSD ? (
-                    <FormHelperText>
-                      ~$ {getETHPriceInUSD(ETHPrice, minContriInUSD)}
-                    </FormHelperText>
+                    <FormHelperText>~$ {getETHPriceInUSD(ETHPrice, minContriInUSD)}</FormHelperText>
                   ) : null}
                 </FormControl>
                 <FormControl id="campaignName">
                   <FormLabel>Campaign Name</FormLabel>
-                  <Input
-                    {...register("campaignName", { required: true })}
-                    isDisabled={isSubmitting}
-                  />
+                  <Input {...register("campaignName", { required: true })} isDisabled={isSubmitting} />
                 </FormControl>
                 <FormControl id="description">
                   <FormLabel>Campaign Description</FormLabel>
-                  <Textarea
-                    {...register("description", { required: true })}
-                    isDisabled={isSubmitting}
-                  />
+                  <Textarea {...register("description", { required: true })} isDisabled={isSubmitting} />
                 </FormControl>
                 <FormControl id="imageUrl">
                   <FormLabel>Image URL</FormLabel>
-                  <Input
-                    {...register("imageUrl", { required: true })}
-                    isDisabled={isSubmitting}
-                    type="url"
-                  />
+                  <Input {...register("imageUrl", { required: true })} isDisabled={isSubmitting} type="url" />
                 </FormControl>
                 <FormControl id="target">
                   <FormLabel>Target Amount</FormLabel>
@@ -154,73 +132,49 @@ export default function NewCampaign() {
                     <Input
                       type="number"
                       step="any"
+                      min="0"
                       {...register("target", { required: true })}
                       isDisabled={isSubmitting}
-                      onChange={(e) => {
-                        setTargetInUSD(Math.abs(e.target.value));
-                      }}
+                      onChange={(e) => setTargetInUSD(Math.abs(e.target.value))}
                     />
-                    <InputRightAddon children="ETH" />
+                    <InputRightAddon>ETH</InputRightAddon>
                   </InputGroup>
                   {targetInUSD ? (
-                    <FormHelperText>
-                      ~$ {getETHPriceInUSD(ETHPrice, targetInUSD)}
-                    </FormHelperText>
+                    <FormHelperText>~$ {getETHPriceInUSD(ETHPrice, targetInUSD)}</FormHelperText>
                   ) : null}
                 </FormControl>
 
                 {error ? (
                   <Alert status="error">
                     <AlertIcon />
-                    <AlertDescription mr={2}> {error}</AlertDescription>
+                    <AlertDescription>{error}</AlertDescription>
                   </Alert>
                 ) : null}
-                {errors.minimumContribution ||
-                errors.name ||
-                errors.description ||
-                errors.imageUrl ||
-                errors.target ? (
+                {errors.minimumContribution || errors.campaignName || errors.description || errors.imageUrl || errors.target ? (
                   <Alert status="error">
                     <AlertIcon />
-                    <AlertDescription mr={2}>
-                      {" "}
-                      All Fields are Required
-                    </AlertDescription>
+                    <AlertDescription>All fields are required.</AlertDescription>
                   </Alert>
                 ) : null}
-                <Stack spacing={10}>
-                  {wallet.status === "connected" ? (
-                    <Button
-                      bg={"teal.400"}
-                      color={"white"}
-                      _hover={{
-                        bg: "teal.500",
-                      }}
-                      isLoading={isSubmitting}
-                      type="submit"
-                    >
-                      Create
-                    </Button>
-                  ) : (
-                    <Stack spacing={3}>
-                      <Button
-                        color={"white"}
-                        bg={"teal.400"}
-                        _hover={{
-                          bg: "teal.300",
-                        }}
-                        onClick={() => wallet.connect()}
-                      >
-                        Connect Wallet{" "}
-                      </Button>
-                      <Alert status="warning">
-                        <AlertIcon />
-                        <AlertDescription mr={2}>
-                          Please Connect Your Wallet First to Create a Campaign
-                        </AlertDescription>
-                      </Alert>
-                    </Stack>
-                  )}
+
+                <Stack spacing={4}>
+                  <Button
+                    bg={"teal.400"}
+                    color={"white"}
+                    _hover={{ bg: "teal.500" }}
+                    isLoading={isSubmitting || wallet.status === "connecting"}
+                    type="submit"
+                  >
+                    {wallet.status === "connected" ? "Create" : "Connect Wallet & Create"}
+                  </Button>
+                  {wallet.status !== "connected" ? (
+                    <Alert status="info">
+                      <AlertIcon />
+                      <AlertDescription>
+                        You will be prompted to connect your wallet before the transaction is sent.
+                      </AlertDescription>
+                    </Alert>
+                  ) : null}
                 </Stack>
               </Stack>
             </form>

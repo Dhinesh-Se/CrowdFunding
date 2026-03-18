@@ -1,16 +1,12 @@
 import Web3 from "web3";
+import { RPC_URL } from "../lib/blockchain";
 
 let web3;
 
-if (typeof window !== "undefined" && typeof window.web3 !== "undefined") {
-  // we are in the browser and meta mask is installed
-  web3 = new Web3(window.web3.currentProvider);
+if (typeof window !== "undefined" && window.ethereum) {
+  web3 = new Web3(window.ethereum);
 } else {
-  // we are on the server *OR* meta mask is not running
-  // creating our own provider
-  const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL || "https://sepolia.infura.io/v3/YOUR_INFURA_KEY";
-  const provider = new Web3.providers.HttpProvider(rpcUrl);
-
+  const provider = new Web3.providers.HttpProvider(RPC_URL);
   web3 = new Web3(provider);
 }
 
