@@ -1,12 +1,20 @@
-
 html,
-body,#root {
+body,
+#__next,
+#root {
   padding: 0;
   margin: 0;
+  min-height: 100%;
   scroll-behavior: smooth;
-  font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen,
-    Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue, sans-serif;
+  font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+    Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+}
 
+body {
+  background:
+    radial-gradient(circle at top left, rgba(56, 178, 172, 0.14), transparent 32%),
+    radial-gradient(circle at top right, rgba(124, 92, 255, 0.14), transparent 28%),
+    linear-gradient(180deg, #f7fffc 0%, #edf5ff 100%);
 }
 
 a {

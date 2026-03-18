@@ -2,11 +2,13 @@ import {
   Alert,
   AlertDescription,
   AlertIcon,
+  Badge,
   Box,
   Button,
   Container,
   Flex,
   Heading,
+  HStack,
   Menu,
   MenuButton,
   MenuItem,
@@ -34,75 +36,52 @@ export default function NavBar() {
   return (
     <Box>
       <Flex
-        color={useColorModeValue("gray.600", "white")}
+        color={useColorModeValue("gray.700", "white")}
         py={{ base: 2 }}
         px={{ base: 4 }}
         borderBottom={1}
         borderStyle={"solid"}
-        borderColor={useColorModeValue("gray.200", "gray.900")}
+        borderColor={useColorModeValue("whiteAlpha.700", "gray.900")}
         align={"center"}
         pos="fixed"
         top="0"
         w={"full"}
-        minH={"60px"}
+        minH={"72px"}
         boxShadow={"sm"}
         zIndex="999"
         justify={"center"}
         css={{
-          backdropFilter: "saturate(180%) blur(5px)",
+          backdropFilter: "saturate(180%) blur(12px)",
           backgroundColor: useColorModeValue(
-            "rgba(255, 255, 255, 0.8)",
-            "rgba(26, 32, 44, 0.8)"
+            "rgba(255, 255, 255, 0.76)",
+            "rgba(17, 24, 39, 0.84)"
           ),
         }}
       >
-        <Container as={Flex} maxW={"7xl"} align={"center"}>
-          <Flex flex={{ base: 1 }} justify="start" ml={{ base: -2, md: 0 }}>
-            <Heading
-              textAlign="left"
-              fontFamily={"heading"}
-              color={useColorModeValue("teal.800", "white")}
-              as="h2"
-              size="lg"
-            >
-              <Box
-                as={"span"}
-                color={useColorModeValue("teal.400", "teal.300")}
-                position={"relative"}
-                zIndex={10}
-                _after={{
-                  content: '""',
-                  position: "absolute",
-                  left: 0,
-                  bottom: 0,
-                  w: "full",
-                  h: "30%",
-                  bg: useColorModeValue("teal.100", "teal.900"),
-                  zIndex: -1,
-                }}
-              >
-                <NextLink href="/">🤝Fund Raiser</NextLink>
-              </Box>
+        <Container as={Flex} maxW={"7xl"} align={"center"} justify="space-between">
+          <Flex align="center" gap={3}>
+            <Heading textAlign="left" fontFamily={"heading"} color={useColorModeValue("brand.700", "white")} as="h2" size="lg">
+              <NextLink href="/">✨ BetterFund</NextLink>
             </Heading>
+            <Badge colorScheme="purple" variant="subtle" borderRadius="full" px={3} py={1} display={{ base: "none", md: "inline-flex" }}>
+              On-chain crowdfunding
+            </Badge>
           </Flex>
-          <Stack
-            flex={{ base: 1, md: 0 }}
-            justify={"flex-end"}
-            direction={"row"}
-            spacing={6}
-            display={{ base: "none", md: "flex" }}
-            align="center"
-          >
-            <Button fontSize={"md"} fontWeight={600} variant={"link"}>
-              <NextLink href="/campaign/new">Create Campaign</NextLink>
+
+          <HStack spacing={6} display={{ base: "none", md: "flex" }}>
+            <Button fontSize={"md"} fontWeight={600} variant={"ghost"} color={useColorModeValue("gray.700", "gray.100")}>
+              <NextLink href="/campaign/new">Launch Campaign</NextLink>
             </Button>
-            <Button fontSize={"md"} fontWeight={600} variant={"link"}>
+            <Button fontSize={"md"} fontWeight={600} variant={"ghost"} color={useColorModeValue("gray.700", "gray.100")}>
               <NextLink href="/#howitworks">How it Works</NextLink>
+            </Button>
+            <Button fontSize={"md"} fontWeight={600} variant={"ghost"} color={useColorModeValue("gray.700", "gray.100")}>
+              <NextLink href="/#deploy">Deploy Guide</NextLink>
             </Button>
 
             {wallet.status === "connected" ? (
               <Menu>
-                <MenuButton as={Button} rightIcon={<FiChevronDown />}>
+                <MenuButton as={Button} rightIcon={<FiChevronDown />} colorScheme="purple" variant="outline" borderRadius="full">
                   {wallet.account.slice(0, 10)}...
                 </MenuButton>
                 <MenuList>
@@ -114,21 +93,22 @@ export default function NavBar() {
               </Menu>
             ) : (
               <Button
-                display={{ base: "none", md: "inline-flex" }}
                 fontSize={"md"}
-                fontWeight={600}
+                fontWeight={700}
                 color={"white"}
-                bg={"teal.400"}
-                _hover={{ bg: "teal.300" }}
+                bgGradient={"linear(to-r, brand.500, accent.500)"}
+                _hover={{ bgGradient: "linear(to-r, brand.600, accent.600)" }}
                 onClick={handleConnect}
                 isLoading={wallet.status === "connecting"}
+                borderRadius="full"
+                px={6}
               >
                 Connect Wallet
               </Button>
             )}
 
             <DarkModeSwitch />
-          </Stack>
+          </HStack>
 
           <Flex display={{ base: "flex", md: "none" }}>
             <DarkModeSwitch />
@@ -136,8 +116,8 @@ export default function NavBar() {
         </Container>
       </Flex>
       {wallet.error ? (
-        <Container maxW="7xl" pt="72px">
-          <Alert status="warning" rounded="md">
+        <Container maxW="7xl" pt="84px">
+          <Alert status="warning" rounded="xl" borderWidth="1px" borderColor="orange.200">
             <AlertIcon />
             <AlertDescription>{wallet.error}</AlertDescription>
           </Alert>
